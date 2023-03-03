@@ -1,0 +1,369 @@
+
+<html>
+    <head>
+
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+        <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+        <script type="text/javascript" src="/eel.js"></script>
+        <meta charset="UTF-8">
+        <meta name="google" content="notranslate" />
+        <html lang="zh-CN">
+
+        <title>BeBr2-数据库</title>
+        <link rel="icon" href="./img/logo.jpg"/>
+
+    </head>
+
+    <div id="app" class="all">
+  
+        <!-- 页面主体区  嵌套容器  包裹 Aside与Main -->
+        <el-container style="background: #e3221811" class="home-container">
+
+            <el-aside style="width: 20vw;
+            min-width: 200px;">
+
+            <el-menu
+        
+            background-color="#e3221811"
+            text-color="#102880ee"
+            active-text-color="#031a64e7"
+            >
+            <el-menu-item style="height:8%;">数据库列表</el-menu-item>
+                <el-submenu v-for="(item,i) in alldb" :key=i :index=item>
+                    <template slot="title">
+                        <i class="el-icon-menu"></i>
+                        <span>{{item}}</span>
+                      </template>
+                      <el-menu-item index="1">
+                        <el-row>
+                            <el-button size="mini" type="success" plain @click="usedb(item,$event)" :disabled="disa">使用</el-button>
+                            <el-button size="mini" type="warning" plain @click="deletedb(item,$event)" :disabled="disa">删除</el-button>
+                          </el-row>
+                      </el-menu-item>
+                        <el-menu-item v-for="(tb,j) in alltb[i]" :key=j :index=tb @click="showtableinfo(item, tb)" :disabled="disa">{{tb}}</el-menu-item>
+                   </el-submenu>
+            </el-menu>
+            </el-aside>
+        <el-container direction="vertical">
+            <el-header style="text-align:left;height:8%;width:100%; background-color: #e3221811;margin: 0%;padding: 0%;font-size: 0;">
+                <el-button @click="getname" style="height: 100%;margin: 0;background-color: rgba(202, 92, 236, 0.089);width: 10%;color:#102880ee;" :disabled="disa">刷新</el-button>
+                <el-select placeholder="  创建" >
+                    <el-option
+                    @click.native="createdb"
+                      key="1"
+                      value="数据库"
+                      :disabled="disa"></el-option>
+                      <el-option
+                    @click.native="addDialogVisible2=true"
+                      key="2"
+                      value="索引"
+                      :disabled="disa"></el-option>
+                      <el-option
+                    @click.native="addDialogVisible3=true"
+                      key="3"
+                      value="Unique"
+                      :disabled="disa">
+                    </el-option>
+                  </el-select>
+            </el-header>
+                <el-main class="main">
+                    <div class="text-area">
+                        <textarea  v-model="allsql" style="resize:none; width: 100%;overflow: hidden;background-color: rgba(222, 184, 135, 0.178);" rows="14" wrap="off" :disabled=true>
+                        </textarea>
+                      </div>
+                    <input style="margin-top:8px; width: 100%;" type="text" placeholder="请输入SQL语句" v-model="sql" v-on:keyup.enter="submit" :disabled="disa">
+                    <el-table
+                    :data="tableData.slice((pageNum - 1) * pageSize, pageNum*pageSize)"
+                   style="width: 100%; margin-top:8px;" stripe size="small" height="90%">
+                   <el-table-column
+                   v-for="(item,i) in field_name"
+                    align="center"
+                    :key="i"
+                    :label="item"
+                    :prop="item"
+                    height="120px"
+                    ></el-table-column></el-table>
+                    <el-pagination
+                    layout="total, prev, pager, next, jumper"
+                    @current-change="changePageNum"
+                    :current-page="pageNum"
+                    :page-size="pageSize"
+                    :total="total"
+                    style="margin-top: 8px;text-align:center;">
+                </el-pagination>
+                    <div style="margin-top: 8px;white-space: pre;">{{fmsg}}</div>
+                </el-main>
+            <el-footer style="text-align:left;height: 5%;background-color: #e3221811"><div style="margin-top: 5px;"><font color="#FF0000">{{msg}}</font></div></el-footer>
+        </el-container>
+                
+               </el-container>
+
+    <el-dialog
+    title="创建数据库"
+    :visible.sync="addDialogVisible"
+    width="50%">
+    <!-- 内容主体区域 -->
+    <el-input v-model="createdbname" placeholder="请输入数据库名称"></el-input>
+    <!-- 底部区域 -->
+    <span slot="footer" class="dialog-footer">
+        <el-button @click="addDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="realcreatedb">确 定</el-button>
+    </span>
+    </el-dialog>
+
+    <el-dialog
+    title="添加索引"
+    :visible.sync="addDialogVisible2"
+    width="50%">
+    <!-- 内容主体区域 -->
+    <el-input v-model="createixname" placeholder="请输入表名"></el-input>
+    <el-input v-model="createixcolname" placeholder="请输入列名" style="margin-top: 8px;"></el-input>
+    <!-- 底部区域 -->
+    <span slot="footer" class="dialog-footer">
+        <el-button @click="addDialogVisible2 = false">取 消</el-button>
+        <el-button type="primary" @click="realcreateix">确 定</el-button>
+    </span>
+    </el-dialog>
+
+    <el-dialog
+    title="添加Unique约束"
+    :visible.sync="addDialogVisible3"
+    width="50%">
+    <!-- 内容主体区域 -->
+    <el-input v-model="createuniname" placeholder="请输入表名"></el-input>
+    <el-input v-model="createunicolname" placeholder="请输入列名" style="margin-top: 8px;"></el-input>
+    <!-- 底部区域 -->
+    <span slot="footer" class="dialog-footer">
+        <el-button @click="addDialogVisible3 = false">取 消</el-button>
+        <el-button type="primary" @click="realcreateuni">确 定</el-button>
+    </span>
+    </el-dialog>
+
+    
+</div>
+</html>
+<script>
+    var app = new Vue({
+        el:'#app',
+        data:{
+            sql:"",
+            allsql:"",
+
+            alldb:[],
+            alltb:[],
+            count: 0,
+            msg: "",
+            fmsg:"",
+            dbname: "",
+            tableData: [],
+            field_name: [],
+            total: 0,
+            pageNum: 1,
+            pageSize: 12,
+            addDialogVisible:false,
+            addDialogVisible2:false,
+            addDialogVisible3:false,
+            disa: false,
+            createdbname: "",
+            createixname: "",
+            createixcolname: "",
+            createuniname: "",
+            createunicolname: "",
+            allfalse: false
+            
+        },
+        mounted() {
+            this.getname();
+        },
+        methods:{
+            realcreatedb: function() {
+                this.addDialogVisible = false;
+                this.sql = "CREATE DATABASE " + this.createdbname + ";"
+                this.createdbname = "";
+                this.submit();
+                
+            },
+            realcreateix: function() {
+                this.addDialogVisible2 = false;
+                this.sql = "ALTER TABLE " + this.createixname + " ADD INDEX (" + this.createixcolname + ");"
+                this.createixname = "";
+                this.createixcolname = "";
+                this.submit();
+            },
+            realcreateuni: function() {
+                this.addDialogVisible3 = false;
+                this.sql = "ALTER TABLE " + this.createuniname + " ADD UNIQUE (" + this.createunicolname + ");"
+                this.createuniname = "";
+                this.createunicolname = "";
+                this.submit();
+            },
+            createdb: function() {
+                this.addDialogVisible = true;
+            },
+            changePageNum: function (val) {
+                this.pageNum = val;
+            },
+            showtableinfo(dbname, tbname) {
+                if (dbname == this.dbname) {
+                    this.sql = "DESC " + tbname + ";"
+                    this.submit() 
+                } else {
+                    this.sql = "USE " + dbname + ";"
+                    this.submit()
+                    this.sql = "DESC " + tbname + ";"
+                    this.submit() 
+                }
+            },
+            usedb: function(dbname, e) {
+                this.sql = "USE " + dbname + ";"
+                this.submit()
+                let target=e.target;
+                if(target.nodeName == 'SPAN' || target.nodeName == 'I'){
+                    target = e.target.parentNode;
+                    }
+                target.blur();
+            },
+            deletedb: function(dbname, e) {
+                this.sql = "DROP DATABASE " + dbname + ";"
+                this.submit()
+                let target=e.target;
+                if(target.nodeName == 'SPAN' || target.nodeName == 'I'){
+                    target = e.target.parentNode;
+                    }
+                target.blur();
+            },
+            submit: async function() {
+            
+            if (this.count == 14) {
+                this.allsql = this.allsql.split("\n").slice(1).join("\n") + ">> " + this.sql + "\n";
+            } else {
+                this.count += 1
+                this.allsql = this.allsql + ">> " + this.sql + "\n";
+            }
+            this.disa = true;
+            this.msg = ""
+            document.title = "BeBr2-数据库  当前数据库：" + this.dbname + "  正在执行命令...";
+
+            let n = await eel.sql_in(this.sql)();
+            if (n[0] == false) {
+                document.title = "BeBr2-数据库  当前数据库：" + this.dbname;
+                alert(n[1])
+            }  
+            else {
+                this.dbname = n[2];
+                if (n[2] != "" || n[2] != null)
+                    document.title = "BeBr2-数据库  当前数据库：" + n[2] + " 执行时间：" +n[1].toFixed(3) + "sec";
+                else
+                    document.title = "BeBr2-数据库";
+                if (n.length == 3){
+                    this.msg = "";
+                }else if (n[3][0] == false){
+                    this.msg = n[3][1];
+                } else {
+                    this.fmsg = n[3][4];
+                    this.tableData = n[3][2];
+                    this.field_name = n[3][1];
+                    this.total = this.tableData.length
+                    this.pageNum = 1
+                    console.log(this.tableData)
+                
+                }
+
+            }
+            this.sql = ""
+            this.getname();
+            this.disa = false;
+            },
+            getname: async function() {
+                let n = await eel.getAlltable()();
+                this.alldb = n[0];
+                this.alltb = n[1];
+            }
+            
+        }
+
+    }
+
+    )
+</script>
+
+<style scoped>
+body, html {
+    margin: 0%;
+}
+.home-container{
+    height: 100%;
+   }
+   .el-aside::-webkit-scrollbar {
+
+    display: none;
+
+    }
+  .el-aside{
+     background-color: #dc903f1f;
+     height: 100%;
+     text-align: left;
+  }
+  .el-select {
+    
+    width: 10%;
+    height: 100%;
+    margin: 0;
+  }
+   .el-select .el-input .el-input__inner{
+    background-color: rgba(202, 92, 236, 0.089);
+    height: 100%;
+    margin: 0;
+   }
+
+   .el-select input::-webkit-input-placeholder{
+    color: #102880ee;
+    }
+    .el-select input::-moz-placeholder{   /* Mozilla Firefox 19+ */
+    color: #102880ee;
+    }
+    .el-select input:-moz-placeholder{    /* Mozilla Firefox 4 to 18 */
+    color: #102880ee;
+    }
+    .el-select input:-ms-input-placeholder{  /* Internet Explorer 10-11 */
+    color: #102880ee;
+    }
+    .el-main::-webkit-scrollbar-track
+    {
+    background: #cedcea01;
+    border-radius: 0;
+    }
+    .el-main::-webkit-scrollbar
+    {
+    -webkit-appearance: none;
+    width: 5px;
+    height: 5px;
+    }
+    .el-main::-webkit-scrollbar-thumb
+    {
+    cursor: pointer;
+    border-radius: 5px;
+    background: rgba(235, 22, 22, 0.92);
+    transition: color .2s ease;
+    }
+
+    .el-table__body-wrapper::-webkit-scrollbar-track
+    {
+    background: #cedcea01;
+    border-radius: 0;
+    }
+    .el-table__body-wrapper::-webkit-scrollbar
+    {
+    -webkit-appearance: none;
+    width: 5px;
+    height: 5px;
+    }
+    .el-table__body-wrapper::-webkit-scrollbar-thumb
+    {
+    cursor: pointer;
+    border-radius: 5px;
+    background: rgba(235, 22, 22, 0.26);
+    transition: color .2s ease;
+    }
+</style>

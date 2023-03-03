@@ -1,0 +1,6 @@
+click==7.1.2
+colorama==0.4.4
+Eel==0.15.1
+numpy==1.21.5
+prettytable==3.6.0
+antlr4-python3-runtime==4.11.1
